@@ -24,16 +24,16 @@ its1_data <- its1_data %>%
 file.create('ITS1_by_sample.md')
 
 for (i in 1:nrow(its1_sample_overview)) {
-  cat(paste0('### ', its1_sample_overview$sample[i], '\n\n'), file = 'ITS1_by_sample.md', append = T)
+  cat(paste0('### ', sample_names_its1[i], '\n\n'), file = 'ITS1_by_sample.md', append = T)
   
-  if (its1_sample_overview$hits[i] == 0) {
+  if (its1_sample_overview[its1_sample_overview$sample == sample_names_its1[i], 2] == 0) {
     cat('no hits!\n\n', file = 'ITS1_by_sample.md', append = T)
     next()
   }
   
   cat('OTU | Info | Abundance\n--- | --- | ---\n', file = 'ITS1_by_sample.md', append = T)
   
-  sample_hits <- filter(its1_data, sample == its1_sample_overview$sample[i])
+  sample_hits <- filter(its1_data, sample == sample_names_its1[i])
   
   for (j in 1:nrow(sample_hits)) {
     output_string <- paste(sample_hits$OTU[j], 
