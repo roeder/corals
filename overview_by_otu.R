@@ -20,11 +20,20 @@ colnames(its2_raw)[grep('PCR', colnames(its2_raw), ignore.case = T)] <-
 samples_its2 <- colnames(its2_raw)[28:197]
 
 sample_info <- rbind(sample_info, c("-", 'PCR_neg_10'))
+sample_info$diseased[is.na(sample_info$diseased)] <- '-'
 
 source('normalise_sample_names.R')
 
 colnames(its1_raw)[28:197] <- samples_its1
 colnames(its2_raw)[28:197] <- samples_its2
+
+dataset_split <- grep('(', sample_info$sample, fixed = T)[1]
+sample_info$dataset <- c(rep('original', dataset_split - 1), 
+                         rep('extra', (nrow(sample_info) - dataset_split + 1)))
+
+group_overview <- sample_info %>% 
+  group_by(dataset, diseased) %>% 
+  summarise(samples = n())
 
 n_sick <- sum(sample_info$diseased == '1', na.rm = T)
 n_healthy <- sum(sample_info$diseased == '0', na.rm = T)
