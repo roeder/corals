@@ -33,19 +33,20 @@ sample_info$dataset <- c(rep('original', dataset_split - 1),
 
 group_overview <- sample_info %>% 
   group_by(dataset, diseased) %>% 
-  summarise(samples = n())
-
-n_sick <- sum(sample_info$diseased == '1', na.rm = T)
-n_healthy <- sum(sample_info$diseased == '0', na.rm = T)
+  summarise(total_samples = n())
 
 ### Turn into long tables
 its1_long <- its1_raw %>% 
   select(OTU, header, one_of(samples_its1)) %>% 
-  gather(sample, hits, one_of(samples_its1)) %>% 
+  gather(sample, reads, one_of(samples_its1)) %>% 
   left_join(sample_info, by = 'sample') %>% 
-  filter(diseased != '-') 
+  filter(diseased != '-',
+         reads > 1) # %>% 
+  # left_join(group_overview, by = c("diseased", "dataset"))
 
 its1_agg <- its1_long %>% 
-  group_by(OTU, diseased) %>% 
+  group_by(OTU, dataset, diseased) %>% 
   summarise(total_hits = n(),
-            total_abundance = sum(hits))
+            total_reads = sum(reads),
+            mean_reads = mean(reads),
+            sd_reads = sd(reads))
