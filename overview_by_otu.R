@@ -45,19 +45,27 @@ its1_long <- its1_raw %>%
 
 its1_agg <- its1_long %>% 
   group_by(OTU, header, dataset, diseased) %>% 
-  summarise(total_hits = n()
-            # , median_reads = median(reads)
-            ) %>% 
+  summarise(total_hits = n()) %>% 
   left_join(group_overview, by = c("diseased", "dataset")) %>% 
   mutate(normalised_hits = total_hits / total_samples)
 
 its1_genus <- its1_agg %>% 
   mutate(genus = word(header)) %>% 
   group_by(genus, dataset, diseased) %>% 
-  summarise(total_hits = sum(total_hits),
-            total_samples = sum(total_samples))
+  summarise(total_hits = mean(total_hits),
+            total_samples = mean(total_samples))
 
-its1_original_output <- its1_agg %>% 
-  filter(dataset == 'original') %>% 
-  # select(-median_reads) %>% 
-  spread(diseased, total_hits, sep = '_', fill = 0)
+its1_genus_hits <- its1_genus %>% 
+  select(-total_samples) %>%
+  spread(diseased, total_hits, sep = '_hits_', fill = 0)
+
+its1_genus_samples <- its1_genus %>% 
+  select(-total_hits) %>%
+  spread(diseased, total_samples, sep = '_samples_', fill = 0)
+
+its1_genus_final <- its1_genus_hits %>% 
+  left_join(its1_genus_samples, by = c("genus", "dataset")) %>% 
+  mutate(freq_0 = round(diseased_hits_0 / diseased_samples_0, 2),
+         freq_1 = round(diseased_hits_1 / diseased_samples_1, 2),
+         output_0 = paste0(diseased_hits_0, ' (', freq_0, ')'),
+         output_1 = paste0(diseased_hits_1, ' (', freq_1, ')'))
