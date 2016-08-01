@@ -41,12 +41,23 @@ its1_long <- its1_raw %>%
   gather(sample, reads, one_of(samples_its1)) %>% 
   left_join(sample_info, by = 'sample') %>% 
   filter(diseased != '-',
-         reads > 1) # %>% 
-  # left_join(group_overview, by = c("diseased", "dataset"))
+         reads > 1) 
 
 its1_agg <- its1_long %>% 
-  group_by(OTU, dataset, diseased) %>% 
-  summarise(total_hits = n(),
-            total_reads = sum(reads),
-            mean_reads = mean(reads),
-            sd_reads = sd(reads))
+  group_by(OTU, header, dataset, diseased) %>% 
+  summarise(total_hits = n()
+            # , median_reads = median(reads)
+            ) %>% 
+  left_join(group_overview, by = c("diseased", "dataset")) %>% 
+  mutate(normalised_hits = total_hits / total_samples)
+
+its1_genus <- its1_agg %>% 
+  mutate(genus = word(header)) %>% 
+  group_by(genus, dataset, diseased) %>% 
+  summarise(total_hits = sum(total_hits),
+            total_samples = sum(total_samples))
+
+its1_original_output <- its1_agg %>% 
+  filter(dataset == 'original') %>% 
+  # select(-median_reads) %>% 
+  spread(diseased, total_hits, sep = '_', fill = 0)
