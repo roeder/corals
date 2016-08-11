@@ -107,6 +107,21 @@ plot_data1$sample <- rownames(plot_data1)
 
 plot_data1 <- left_join(plot_data1, sample_info, by = 'sample')
 
+plot_data2 <- as.data.frame(pca2$x[, 1:2])
+plot_data2$sample <- rownames(plot_data2)
+
+plot_data2 <- left_join(plot_data2, sample_info, by = 'sample')
+
+plot_data3 <- as.data.frame(pca3$x[, 1:2])
+plot_data3$sample <- rownames(plot_data3)
+
+plot_data3 <- left_join(plot_data3, sample_info, by = 'sample')
+
+plot_data4 <- as.data.frame(pca4$x[, 1:2])
+plot_data4$sample <- rownames(plot_data4)
+
+plot_data4 <- left_join(plot_data4, sample_info, by = 'sample')
+
 ### Plots -----------
 library(ggplot2)
 
@@ -116,5 +131,36 @@ ggplot(plot_data1, aes(x = PC1, y = PC2, colour = diseased)) +
                  round(cum_var1[2] * 100, 2), 
                  " % of total variation captured")) +
   guides(colour = guide_legend(title = NULL)) +
-  scale_colour_discrete(labels = c("healthy", "sick")) +
+  scale_colour_manual(values = c("#0072B2", "#D55E00"),
+                      labels = c("healthy", "sick")) +
+  theme_light() 
+
+ggplot(plot_data2, aes(x = PC1, y = PC2, colour = diseased)) +
+  geom_point() +
+  ggtitle(paste0("PCA for ITS1 & extra data\n", 
+                 round(cum_var2[2] * 100, 2), 
+                 " % of total variation captured")) +
+  guides(colour = guide_legend(title = NULL)) +
+  scale_colour_manual(values = c("#999999", "#0072B2", "#D55E00"),
+                      labels = c("unlabeled", "healthy", "sick")) +
+  theme_light() 
+
+ggplot(plot_data3, aes(x = PC1, y = PC2, colour = diseased)) +
+  geom_point() +
+  ggtitle(paste0("PCA for ITS2 & original data\n", 
+                 round(cum_var3[2] * 100, 2), 
+                 " % of total variation captured")) +
+  guides(colour = guide_legend(title = NULL)) +
+  scale_colour_manual(values = c("#0072B2", "#D55E00"),
+                      labels = c("healthy", "sick")) +
+  theme_light() 
+
+ggplot(plot_data4, aes(x = PC1, y = PC2, colour = diseased)) +
+  geom_point() +
+  ggtitle(paste0("PCA for ITS2 & extra data\n", 
+                 round(cum_var4[2] * 100, 2), 
+                 " % of total variation captured")) +
+  guides(colour = guide_legend(title = NULL)) +
+  scale_colour_manual(values = c("#999999", "#0072B2", "#D55E00"),
+                      labels = c("unlabeled", "healthy", "sick")) +
   theme_light() 
