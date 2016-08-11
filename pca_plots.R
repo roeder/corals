@@ -102,3 +102,19 @@ pca_var4 <- pca4$sdev ^ 2
 cum_var4 <- cumsum(pca_var4 / sum(pca_var4))
 
 ### Plot prep -------------
+plot_data1 <- as.data.frame(pca1$x[, 1:2])
+plot_data1$sample <- rownames(plot_data1)
+
+plot_data1 <- left_join(plot_data1, sample_info, by = 'sample')
+
+### Plots -----------
+library(ggplot2)
+
+ggplot(plot_data1, aes(x = PC1, y = PC2, colour = diseased)) +
+  geom_point() +
+  ggtitle(paste0("PCA for ITS1 & original data\n", 
+                 round(cum_var1[2] * 100, 2), 
+                 " % of total variation captured")) +
+  guides(colour = guide_legend(title = NULL)) +
+  scale_colour_discrete(labels = c("healthy", "sick")) +
+  theme_light() 
