@@ -6,8 +6,8 @@ library(tidyr)
 its1_raw <- read_excel('Linett_total_ITS1.xlsx')
 its2_raw <- read_excel('Linett_total_ITS2.xlsx')
 
-sample_info <- read_excel('ITS1 miseq data with sites.xlsx')[, 2:3]
-colnames(sample_info) <- c('diseased', 'sample')
+sample_info <- read_excel('ITS1 miseq data with sites.xlsx')[, 1:3]
+colnames(sample_info) <- c('site', 'diseased', 'sample')
 
 # ITS1: Fixed names are loaded from separate spreadsheet!
 samples_its1 <- sample_info$sample
@@ -36,6 +36,8 @@ extra_samples <- sample_info$sample[dataset_split:nrow(sample_info)]
 
 control_samples <- c(grep('pcr_neg_', sample_info$sample, fixed = T, value = T),
                      grep('ex_con_', sample_info$sample, fixed = T, value = T))
+
+sample_info$site <- str_to_title(sample_info$site)
 
 ### PCA 1: ITS1 & original data ---------
 df1 <- its1_raw %>% 
@@ -83,7 +85,9 @@ pca3 <- prcomp(matrix3, center = F)
 
 pca_var3 <- pca3$sdev ^ 2
 
-cum_var3 <- cumsum(pca_var3 / sum(pca_var3))
+rel_var3 <- pca_var3 / sum(pca_var3)
+
+cum_var3 <- cumsum(rel_var3)
 
 ### PCA 4: ITS2 & extra data ---------
 df4 <- its2_raw %>% 
@@ -104,6 +108,7 @@ cum_var4 <- cumsum(pca_var4 / sum(pca_var4))
 ### Plot prep -------------
 plot_data1 <- as.data.frame(pca1$x[, 1:2])
 plot_data1$sample <- rownames(plot_data1)
+plot_data1$individual <- str_sub(plot_data1$sample, end = -3)
 
 plot_data1 <- left_join(plot_data1, sample_info, by = 'sample')
 
@@ -112,8 +117,9 @@ plot_data2$sample <- rownames(plot_data2)
 
 plot_data2 <- left_join(plot_data2, sample_info, by = 'sample')
 
-plot_data3 <- as.data.frame(pca3$x[, 1:2])
+plot_data3 <- as.data.frame(pca3$x[, c(1,3)])
 plot_data3$sample <- rownames(plot_data3)
+plot_data3$individual <- str_sub(plot_data3$sample, end = -3)
 
 plot_data3 <- left_join(plot_data3, sample_info, by = 'sample')
 
@@ -122,7 +128,7 @@ plot_data4$sample <- rownames(plot_data4)
 
 plot_data4 <- left_join(plot_data4, sample_info, by = 'sample')
 
-### Plots -----------
+### Plots by disease status -----------
 library(ggplot2)
 
 ggplot(plot_data1, aes(x = PC1, y = PC2, colour = diseased)) +
@@ -145,10 +151,10 @@ ggplot(plot_data2, aes(x = PC1, y = PC2, colour = diseased)) +
                       labels = c("unlabeled", "healthy", "sick")) +
   theme_light() 
 
-ggplot(plot_data3, aes(x = PC1, y = PC2, colour = diseased)) +
+ggplot(plot_data3, aes(x = PC1, y = PC3, colour = diseased)) +
   geom_point() +
   ggtitle(paste0("PCA for ITS2 & original data\n", 
-                 round(cum_var3[2] * 100, 2), 
+                 round((rel_var3[1] + rel_var3[3]) * 100, 2), 
                  " % of total variation captured")) +
   guides(colour = guide_legend(title = NULL)) +
   scale_colour_manual(values = c("#0072B2", "#D55E00"),
@@ -163,4 +169,50 @@ ggplot(plot_data4, aes(x = PC1, y = PC2, colour = diseased)) +
   guides(colour = guide_legend(title = NULL)) +
   scale_colour_manual(values = c("#999999", "#0072B2", "#D55E00"),
                       labels = c("unlabeled", "healthy", "sick")) +
+  theme_light() 
+
+### Plots by site & disease status -----------
+
+ggplot(plot_data1, aes(x = PC1, y = PC2, colour = site, shape = diseased)) +
+  geom_point() +
+  ggtitle(paste0("PCA for ITS1 & original data\n", 
+                 round(cum_var1[2] * 100, 2), 
+                 " % of total variation captured")) +
+  theme_light() 
+
+ggplot(plot_data2, aes(x = PC1, y = PC2, colour = site, shape = diseased)) +
+  geom_point() +
+  ggtitle(paste0("PCA for ITS1 & extra data\n", 
+                 round(cum_var2[2] * 100, 2), 
+                 " % of total variation captured")) +
+  theme_light() 
+
+ggplot(plot_data3, aes(x = PC1, y = PC3, colour = site, shape = diseased)) +
+  geom_point() +
+  ggtitle(paste0("PCA for ITS2 & original data\n", 
+                 round((rel_var3[1] + rel_var3[3]) * 100, 2), 
+                 " % of total variation captured")) +
+  theme_light() 
+
+ggplot(plot_data4, aes(x = PC1, y = PC2, colour = site, shape = diseased)) +
+  geom_point() +
+  ggtitle(paste0("PCA for ITS2 & extra data\n", 
+                 round(cum_var4[2] * 100, 2), 
+                 " % of total variation captured")) +
+  theme_light() 
+
+### Plots by pairing -------------
+
+ggplot(plot_data1, aes(x = PC1, y = PC2, colour = individual, shape = diseased)) +
+  geom_point() +
+  ggtitle(paste0("PCA for ITS1 & original data\n", 
+                 round(cum_var1[2] * 100, 2), 
+                 " % of total variation captured")) +
+  theme_light() 
+
+ggplot(plot_data3, aes(x = PC1, y = PC3, colour = individual, shape = diseased)) +
+  geom_point() +
+  ggtitle(paste0("PCA for ITS2 & original data\n", 
+                 round((rel_var3[1] + rel_var3[3]) * 100, 2), 
+                 " % of total variation captured")) +
   theme_light() 
