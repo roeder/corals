@@ -3,10 +3,10 @@ library(dplyr)
 library(tidyr)
 
 ### Read in data ---------
-its1_raw <- read_excel('Linett_total_ITS1.xlsx')
-its2_raw <- read_excel('Linett_total_ITS2.xlsx')
+its1_raw <- read_excel('input/Linett_total_ITS1.xlsx')
+its2_raw <- read_excel('input/Linett_total_ITS2.xlsx')
 
-sample_info <- read_excel('ITS1 miseq data with sites.xlsx')[, 1:3]
+sample_info <- read_excel('input/ITS1 miseq data with sites.xlsx')[, 1:3]
 colnames(sample_info) <- c('site', 'diseased', 'sample')
 
 # ITS1: Fixed names are loaded from separate spreadsheet!

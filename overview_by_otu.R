@@ -3,10 +3,10 @@ library(dplyr)
 library(tidyr)
 
 ### Read in data ---------
-its1_raw <- read_excel('Linett_total_ITS1.xlsx')
-its2_raw <- read_excel('Linett_total_ITS2.xlsx')
+its1_raw <- read_excel('input/Linett_total_ITS1.xlsx')
+its2_raw <- read_excel('input/Linett_total_ITS2.xlsx')
 
-sample_info <- read_excel('ITS1 miseq data with sites.xlsx')[, 2:3]
+sample_info <- read_excel('input/ITS1 miseq data with sites.xlsx')[, 2:3]
 colnames(sample_info) <- c('diseased', 'sample')
 
 # ITS1: Fixed names are loaded from separate spreadsheet!
@@ -199,11 +199,11 @@ l_genus <- list("ITS1_orig" = filter(its1_genus_freq, dataset == 'original'),
                 "ITS1_extra" = filter(its1_genus_freq, dataset == 'extra'),
                 "ITS2_extra" = filter(its2_genus_freq, dataset == 'extra'))
 
-write.xlsx(l_genus, file = "overview_by_genus.xlsx")
+write.xlsx(l_genus, file = "output/overview_by_genus.xlsx")
 
 l_species <- list("ITS1_orig" = filter(its1_species_freq, dataset == 'original'),
                   "ITS2_orig" = filter(its2_species_freq, dataset == 'original'),
                   "ITS1_extra" = filter(its1_species_freq, dataset == 'extra'),
                   "ITS2_extra" = filter(its2_species_freq, dataset == 'extra'))
 
-write.xlsx(l_species, file = "overview_by_species.xlsx")
+write.xlsx(l_species, file = "output/overview_by_species.xlsx")

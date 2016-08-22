@@ -3,10 +3,10 @@ library(dplyr)
 library(tidyr)
 
 ### Read in data ---------
-its1_raw <- read_excel('Linett_total_ITS1.xlsx')
-its2_raw <- read_excel('Linett_total_ITS2.xlsx')
+its1_raw <- read_excel('input/Linett_total_ITS1.xlsx')
+its2_raw <- read_excel('input/Linett_total_ITS2.xlsx')
 
-sample_info <- read_excel('ITS1 miseq data with sites.xlsx')[, 2:3]
+sample_info <- read_excel('input/ITS1 miseq data with sites.xlsx')[, 2:3]
 colnames(sample_info) <- c('diseased', 'sample')
 
 # ITS1: Fixed names are loaded from separate spreadsheet!
@@ -39,17 +39,17 @@ its1_data <- its1_data %>%
   filter(abundance > 0) %>% 
   arrange(sample, desc(abundance))
 
-file.create('ITS1_by_sample.md')
+file.create('output/ITS1_by_sample.md')
 
 for (i in 1:nrow(its1_sample_overview)) {
-  cat(paste0('### ', samples_its1[i], '\n\n'), file = 'ITS1_by_sample.md', append = T)
+  cat(paste0('### ', samples_its1[i], '\n\n'), file = 'output/ITS1_by_sample.md', append = T)
   
   if (its1_sample_overview[its1_sample_overview$sample == samples_its1[i], 2] == 0) {
-    cat('no hits!\n\n', file = 'ITS1_by_sample.md', append = T)
+    cat('no hits!\n\n', file = 'output/ITS1_by_sample.md', append = T)
     next()
   }
   
-  cat('OTU | Info | Abundance\n--- | --- | ---\n', file = 'ITS1_by_sample.md', append = T)
+  cat('OTU | Info | Abundance\n--- | --- | ---\n', file = 'output/ITS1_by_sample.md', append = T)
   
   sample_hits <- filter(its1_data, sample == samples_its1[i])
   
@@ -58,11 +58,11 @@ for (i in 1:nrow(its1_sample_overview)) {
                            substr(sample_hits$header[j], 1, 40), 
                            sample_hits$abundance[j], 
                            sep = ' | ')
-    cat(paste0(output_string, '\n'), file = 'ITS1_by_sample.md', append = T)
+    cat(paste0(output_string, '\n'), file = 'output/ITS1_by_sample.md', append = T)
   }
   
   
-  cat('\n', file = 'ITS1_by_sample.md', append = T)
+  cat('\n', file = 'output/ITS1_by_sample.md', append = T)
 }
 
 # ITS 2 process
@@ -78,17 +78,17 @@ its2_data <- its2_data %>%
   filter(abundance > 0) %>% 
   arrange(sample, desc(abundance))
 
-file.create('ITS2_by_sample.md')
+file.create('output/ITS2_by_sample.md')
 
 for (i in 1:nrow(its2_sample_overview)) {
-  cat(paste0('### ', samples_its2[i], '\n\n'), file = 'ITS2_by_sample.md', append = T)
+  cat(paste0('### ', samples_its2[i], '\n\n'), file = 'output/ITS2_by_sample.md', append = T)
   
   if (its2_sample_overview[its2_sample_overview$sample == samples_its2[i], 2] == 0) {
-    cat('no hits!\n\n', file = 'ITS2_by_sample.md', append = T)
+    cat('no hits!\n\n', file = 'output/ITS2_by_sample.md', append = T)
     next()
   }
   
-  cat('OTU | Info | Abundance\n--- | --- | ---\n', file = 'ITS2_by_sample.md', append = T)
+  cat('OTU | Info | Abundance\n--- | --- | ---\n', file = 'output/ITS2_by_sample.md', append = T)
   
   sample_hits <- filter(its2_data, sample == samples_its2[i])
   
@@ -97,9 +97,9 @@ for (i in 1:nrow(its2_sample_overview)) {
                            substr(sample_hits$header[j], 1, 40), 
                            sample_hits$abundance[j], 
                            sep = ' | ')
-    cat(paste0(output_string, '\n'), file = 'ITS2_by_sample.md', append = T)
+    cat(paste0(output_string, '\n'), file = 'output/ITS2_by_sample.md', append = T)
   }
   
   
-  cat('\n', file = 'ITS2_by_sample.md', append = T)
+  cat('\n', file = 'output/ITS2_by_sample.md', append = T)
 }
