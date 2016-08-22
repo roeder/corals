@@ -37,7 +37,7 @@ group_overview <- sample_info %>%
 
 group_overview$status <- rep(c('not assigned', 'healthy', 'sick'), 2)
 
-### Turn ITS1 into long tables ---------
+### ITS1 by genus ---------
 its1_long <- its1_raw %>% 
   select(OTU, header, one_of(samples_its1)) %>% 
   gather(sample, reads, one_of(samples_its1)) %>% 
@@ -77,7 +77,40 @@ genus3 <- its1_genus %>%
          healthy_freq = round(healthy / healthy_total, 3),
          sick_freq = round(sick / sick_total, 3))
 
-### Turn ITS2 into long tables ---------
+### ITS1 by species ---------
+its1_species <- its1_long %>% 
+  mutate(species = word(header, end = 2)) %>% 
+  group_by(sample, species) %>% 
+  mutate(occurence = row_number()) %>% 
+  filter(occurence == 1) %>% 
+  left_join(group_overview[1:3, c(2, 4)], by = 'diseased') %>% 
+  ungroup()
+
+species1 <- its1_species %>% 
+  filter(dataset == 'original') %>% 
+  group_by(species, status) %>% 
+  summarise(freq = n()) %>% 
+  spread(status, freq, fill = 0) %>% 
+  mutate(healthy_total = group_overview$total_samples[group_overview$dataset == "original" & 
+                                                        group_overview$status == 'healthy'],
+         sick_total = group_overview$total_samples[group_overview$dataset == "original" & 
+                                                     group_overview$status == 'sick'],
+         healthy_freq = round(healthy / healthy_total, 3),
+         sick_freq = round(sick / sick_total, 3))
+
+species3 <- its1_species %>% 
+  filter(dataset == 'extra') %>% 
+  group_by(species, status) %>% 
+  summarise(freq = n()) %>% 
+  spread(status, freq, fill = 0) %>% 
+  mutate(healthy_total = group_overview$total_samples[group_overview$dataset == "extra" & 
+                                                        group_overview$status == 'healthy'],
+         sick_total = group_overview$total_samples[group_overview$dataset == "extra" & 
+                                                     group_overview$status == 'sick'],
+         healthy_freq = round(healthy / healthy_total, 3),
+         sick_freq = round(sick / sick_total, 3))
+
+### ITS2 by genus ---------
 its2_long <- its2_raw %>% 
   select(OTU, header, one_of(samples_its2)) %>% 
   gather(sample, reads, one_of(samples_its2)) %>% 
@@ -117,6 +150,39 @@ genus4 <- its2_genus %>%
          healthy_freq = round(healthy / healthy_total, 3),
          sick_freq = round(sick / sick_total, 3))
 
+### ITS2 by species ---------
+its2_species <- its2_long %>% 
+  mutate(species = word(header, end = 2)) %>% 
+  group_by(sample, species) %>% 
+  mutate(occurence = row_number()) %>% 
+  filter(occurence == 1) %>% 
+  left_join(group_overview[1:3, c(2, 4)], by = 'diseased') %>% 
+  ungroup()
+
+species2 <- its2_species %>% 
+  filter(dataset == 'original') %>% 
+  group_by(species, status) %>% 
+  summarise(freq = n()) %>% 
+  spread(status, freq, fill = 0) %>% 
+  mutate(healthy_total = group_overview$total_samples[group_overview$dataset == "original" & 
+                                                        group_overview$status == 'healthy'],
+         sick_total = group_overview$total_samples[group_overview$dataset == "original" & 
+                                                     group_overview$status == 'sick'],
+         healthy_freq = round(healthy / healthy_total, 3),
+         sick_freq = round(sick / sick_total, 3))
+
+species4 <- its2_species %>% 
+  filter(dataset == 'extra') %>% 
+  group_by(species, status) %>% 
+  summarise(freq = n()) %>% 
+  spread(status, freq, fill = 0) %>% 
+  mutate(healthy_total = group_overview$total_samples[group_overview$dataset == "extra" & 
+                                                        group_overview$status == 'healthy'],
+         sick_total = group_overview$total_samples[group_overview$dataset == "extra" & 
+                                                     group_overview$status == 'sick'],
+         healthy_freq = round(healthy / healthy_total, 3),
+         sick_freq = round(sick / sick_total, 3))
+
 ### Output to xlsx files ----------
 library(openxlsx)
 
@@ -126,3 +192,10 @@ l_genus <- list("ITS1_orig" = genus1,
                 "ITS2_extra" = genus4)
 
 write.xlsx(l_genus, file = "output/new_overview_by_genus.xlsx")
+
+l_species <- list("ITS1_orig" = species1,
+                "ITS2_orig" = species2,
+                "ITS1_extra" = species3,
+                "ITS2_extra" = species4)
+
+write.xlsx(l_species, file = "output/new_overview_by_species.xlsx")
