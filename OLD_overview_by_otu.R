@@ -1,3 +1,5 @@
+### OLD STUPID VERSION - DO NOT USE
+
 library(readxl)
 library(dplyr)
 library(tidyr)
@@ -41,7 +43,7 @@ its1_long <- its1_raw %>%
   gather(sample, reads, one_of(samples_its1)) %>% 
   left_join(sample_info, by = 'sample') %>% 
   filter(diseased != '-',
-         reads > 1) 
+         reads > 1)
 
 its1_agg <- its1_long %>% 
   group_by(OTU, header, dataset, diseased) %>% 
