@@ -1,40 +1,73 @@
-library(readxl)
-library(dplyr)
-library(tidyr)
+### Load packages ---------
+library(readxl)  # reading xlsx files
+library(dplyr)  # data frame manipulation
+library(tidyr)  # wide data <-> long data transformations
 
 ### Read in data ---------
+
+# Read in raw data from the two big excel sheets
 its1_raw <- read_excel('input/Linett_total_ITS1.xlsx')
 its2_raw <- read_excel('input/Linett_total_ITS2.xlsx')
 
+# Read in columns 2 and 3 from the excel sheet containing disease status for
+# the samples
 sample_info <- read_excel('input/ITS1 miseq data with sites.xlsx')[, 2:3]
-colnames(sample_info) <- c('diseased', 'sample')
+colnames(sample_info) <- c('diseased', 'sample')  # shorter column names
 
-# ITS1: Fixed names are loaded from separate spreadsheet!
+### Fix sample names -----------
+# This part is a bit fuzzy and wasn't optimised to be short or easy on the eyes.
+# It's a bunch of code that does the job in terms of cleaning up the sample 
+# names.
+
+# Get ITS1 sample names from the sample_info lookup table (it is filled with 
+# info on ITS1 samples).
 samples_its1 <- sample_info$sample
 
-# ITS2: Fix duplicate PCR neg names by appending new indices in order of
-# appearance
-colnames(its2_raw)[grep('PCR', colnames(its2_raw), ignore.case = T)] <- 
-  paste0('PCR_neg_', 1:10)
-
+# Get ITS2 names from column names in the big raw table. 
 samples_its2 <- colnames(its2_raw)[28:197]
 
-sample_info <- rbind(sample_info, c("-", 'PCR_neg_10'))
-sample_info$diseased[is.na(sample_info$diseased)] <- '-'
+# The PCR blanks have messed up, repetitive names. We give them unique names
+# instead. They now have names from PCR_neg_1 to PCR_neg_10
+samples_its2[grep('PCR', samples_its2, ignore.case = T)] <- 
+  paste0('PCR_neg_', 1:10)
 
+# Add PCR_neg_10 to the lookup table. (It already has sample names up to and 
+# including pcr_neg_9)
+sample_info <- rbind(sample_info, c("-", 'PCR_neg_10'))
+
+# Run a script with a bunch of lines that clean up the formatting of sample 
+# names: trim away whitespace, convert to lower letters, remove unnecessary 
+# spaces and fix typos. This needs to be done for every analysis, so putting 
+# those commands in an extra script cleans up the analysis scripts.
 source('normalise_sample_names.R')
 
+# Replace the column names that are sample names with the now cleaned up ones.
 colnames(its1_raw)[28:197] <- samples_its1
 colnames(its2_raw)[28:197] <- samples_its2
 
+### Prepare dataset information ---------------
+
+# Find the first sample name containing a parenthesis character. This is the
+# first sample in the "extra" dataset.
 dataset_split <- grep('(', sample_info$sample, fixed = T)[1]
+
+# Add a column to the sample info lookup table containing the name of the
+# dataset this sample belongs to.
 sample_info$dataset <- c(rep('original', dataset_split - 1), 
                          rep('extra', (nrow(sample_info) - dataset_split + 1)))
 
+# Another tweak to the lookup table: set rows without disease information (they
+# are NAs right now) to status "-". Now 1 is diseased, 0 healthy, - not assigned
+sample_info$diseased[is.na(sample_info$diseased)] <- '-'
+
+# Create a lookup table containing the total number of samples corresponding to 
+# original/extra dataset as well as each of the three disease statuses.
 group_overview <- sample_info %>% 
   group_by(dataset, diseased) %>% 
   summarise(total_samples = n())
 
+# Add a more descriptive column for the disease status. This will be used for 
+# plotting.
 group_overview$status <- rep(c('not assigned', 'healthy', 'sick'), 2)
 
 ### ITS1 by genus ---------
