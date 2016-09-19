@@ -2,6 +2,8 @@
 library(readxl)  # reading xlsx files
 library(dplyr)  # data frame manipulation
 library(tidyr)  # wide data <-> long data transformations
+library(openxlsx)  # writing xlsx files
+library(stringr)  # word() function for extracting species/genus
 
 ### Read in data ---------
 
@@ -70,34 +72,115 @@ group_overview <- sample_info %>%
 # plotting.
 group_overview$status <- rep(c('not assigned', 'healthy', 'sick'), 2)
 
-### ITS1 by genus ---------
+### Prepare long tables ----------
+# First we transform the wide raw data into a long table, so every row contains
+# a sample name, OTU id and corresponding species information as well as the 
+# number of mapped reads.
+#
+# In subsequent code blocks, we will construct overviews for specific ITS 
+# regions and original vs extra dataset based on the long table created here.
+
+# Take the raw, wide data frame,
 its1_long <- its1_raw %>% 
+  # select only the columns containing OTU id, species information (header), and
+  # the columns containing sample names,
   select(OTU, header, one_of(samples_its1)) %>% 
+  # then gather the data into a long table with the new colums "sample" (tidyr 
+  # calls this the key column) and "reads" (this is called value column),
   gather(sample, reads, one_of(samples_its1)) %>% 
+  # then add information about each sample by joining with the sample info 
+  # lookup table
+  left_join(sample_info, by = 'sample') %>% 
+  # and finally only keep rows that have at least two mapped reads and a disease
+  # status that is 1 or 0 (i.e. not "-")
+  filter(diseased != '-',
+         reads > 1) 
+
+# ITS2 works exactly the same. There will be a lot of copy-pasted blocks with  
+# slight differences in this script.
+its2_long <- its2_raw %>% 
+  select(OTU, header, one_of(samples_its2)) %>% 
+  gather(sample, reads, one_of(samples_its2)) %>% 
   left_join(sample_info, by = 'sample') %>% 
   filter(diseased != '-',
          reads > 1) 
 
+### ITS1 by genus ---------
+# Next up, we want to aggregate data by genus information (it could just as well
+# be species information, the order is not important). Conceptually, what we 
+# want to do is find out if an OTU corresponding to a specific genus shows up in
+# a sample at least once (with at least two mapped reads, see above).
+
+# Take the long table,
 its1_genus <- its1_long %>% 
+  # add a column that has the name of the genus by grabbing the first word from
+  # the 'header' column, (this is a dumb computer approach - we will also have
+  # the genus 'Uncultured' in here)
   mutate(genus = word(header, end = 1)) %>% 
+  # then provide some grouping information. From now on, commands that can use 
+  # grouping information, will operate on subgroups of data that have the same
+  # sample name and the same genus information.
   group_by(sample, genus) %>% 
+  # Add a column called 'occurence'. Here we just count how many different OTUs
+  # corresponding to the same genus show up (with at least two reads, still) in 
+  # one sample. This uses the grouping we just defined.
+  # 
+  # For example, sample 2.4.h has 23 different Millepora OTUs. So for the rows 
+  # with sample == 2.4.h and genus == Millepora, the 'occurence'column will have
+  # integers from 1 to 23.
+  #
+  # Try running this block only up to and including the mutate() command (stop 
+  # before the pipe operator %>%) and look at the dataset. It should be pretty
+  # intuitive.
   mutate(occurence = row_number()) %>% 
+  # As we only want to know if a genus occurs at least once within a sample, we
+  # continue with only the first occurences of each genus in a sample.
   filter(occurence == 1) %>% 
-  left_join(group_overview[1:3, c(2, 4)], by = 'diseased') %>% 
+  # Finally, we add the more descriptive disease status information by left-
+  # joining with a subset of the group overview lookup table
+  left_join(group_overview[1:3, c(2, 4)], by = 'diseased') %>%
+  # and remove the grouping information again (pretty sure this isn't really
+  # necessary. I'm doing it here to be safe because there will be another 
+  # grouping later on).
   ungroup()
 
+# The next block is the last unique procedure in this script, the rest will be
+# slightly altered copy-pasted versions of things we've already seen. Here, we
+# aggregate the number of hits for each genus - grouped by disease status. The 
+# data frame resulting from this block will directly go into one of the output
+# excel sheets (it's ITS1 data from the original dataset aggregated by genus).
+
+# Take the prepared long table with genus information,
 genus1 <- its1_genus %>% 
+  # continue only with samples from the original dataset,
   filter(dataset == 'original') %>% 
+  # group by genus and disease status
   group_by(genus, status) %>% 
+  # and aggregate the data according to this grouping: summarise() from dplyr 
+  # provides summaries of data groups. Here, we just use n() to count all 
+  # possible cases within this grouping. 
+  #
+  # This changes the data structure substantially: we just have three columns - 
+  # genus name, disease status and number of samples of this disease status 
+  # where the genus shows up (with at least OTU and at least two mapped reads).
   summarise(freq = n()) %>% 
+  # In one of the last steps before exporting the table, we turn the long table
+  # into a wide table again - wide tables are nice as overview tables and that's 
+  # what we want. The spread() function from tidyr does the transformation.
   spread(status, freq, fill = 0) %>% 
+  # We add some more information before exporting the data. We grab the total
+  # number of samples for this dataset and each disease status from the group
+  # overview lookup table
   mutate(healthy_total = group_overview$total_samples[group_overview$dataset == "original" & 
                                                         group_overview$status == 'healthy'],
          sick_total = group_overview$total_samples[group_overview$dataset == "original" & 
                                                      group_overview$status == 'sick'],
+         # and calculate frequencies: number of samples with "hits" divided by
+         # total number of samples.
          healthy_freq = round(healthy / healthy_total, 3),
          sick_freq = round(sick / sick_total, 3))
 
+# This is the same as above, only with the extra dataset instead of original.
 genus3 <- its1_genus %>% 
   filter(dataset == 'extra') %>% 
   group_by(genus, status) %>% 
@@ -111,14 +194,19 @@ genus3 <- its1_genus %>%
          sick_freq = round(sick / sick_total, 3))
 
 ### ITS1 by species ---------
+# Aggregation by species works in a way analogous to aggregation by genus. The 
+# only difference is we grab the first two words from the header column instead 
+# of only the first one.
+
 its1_species <- its1_long %>% 
-  mutate(species = word(header, end = 2)) %>% 
+  mutate(species = word(header, end = 2)) %>%  # end = 2 gets first two words!
   group_by(sample, species) %>% 
   mutate(occurence = row_number()) %>% 
   filter(occurence == 1) %>% 
   left_join(group_overview[1:3, c(2, 4)], by = 'diseased') %>% 
   ungroup()
 
+# Same procedure as seen before! ITS1/original/species
 species1 <- its1_species %>% 
   filter(dataset == 'original') %>% 
   group_by(species, status) %>% 
@@ -131,6 +219,7 @@ species1 <- its1_species %>%
          healthy_freq = round(healthy / healthy_total, 3),
          sick_freq = round(sick / sick_total, 3))
 
+# ITS1/extra/species
 species3 <- its1_species %>% 
   filter(dataset == 'extra') %>% 
   group_by(species, status) %>% 
@@ -144,13 +233,6 @@ species3 <- its1_species %>%
          sick_freq = round(sick / sick_total, 3))
 
 ### ITS2 by genus ---------
-its2_long <- its2_raw %>% 
-  select(OTU, header, one_of(samples_its2)) %>% 
-  gather(sample, reads, one_of(samples_its2)) %>% 
-  left_join(sample_info, by = 'sample') %>% 
-  filter(diseased != '-',
-         reads > 1) 
-
 its2_genus <- its2_long %>% 
   mutate(genus = word(header, end = 1)) %>% 
   group_by(sample, genus) %>% 
@@ -159,6 +241,7 @@ its2_genus <- its2_long %>%
   left_join(group_overview[1:3, c(2, 4)], by = 'diseased') %>% 
   ungroup()
 
+# ITS2/original/genus
 genus2 <- its2_genus %>% 
   filter(dataset == 'original') %>% 
   group_by(genus, status) %>% 
@@ -171,6 +254,7 @@ genus2 <- its2_genus %>%
          healthy_freq = round(healthy / healthy_total, 3),
          sick_freq = round(sick / sick_total, 3))
 
+# ITS2/extra/genus
 genus4 <- its2_genus %>% 
   filter(dataset == 'extra') %>% 
   group_by(genus, status) %>% 
@@ -192,6 +276,7 @@ its2_species <- its2_long %>%
   left_join(group_overview[1:3, c(2, 4)], by = 'diseased') %>% 
   ungroup()
 
+# ITS2/original/species
 species2 <- its2_species %>% 
   filter(dataset == 'original') %>% 
   group_by(species, status) %>% 
@@ -204,6 +289,7 @@ species2 <- its2_species %>%
          healthy_freq = round(healthy / healthy_total, 3),
          sick_freq = round(sick / sick_total, 3))
 
+# ITS2/extra/species
 species4 <- its2_species %>% 
   filter(dataset == 'extra') %>% 
   group_by(species, status) %>% 
@@ -217,18 +303,22 @@ species4 <- its2_species %>%
          sick_freq = round(sick / sick_total, 3))
 
 ### Output to xlsx files ----------
-library(openxlsx)
-
+# We use write.xlsx() from the openxlsx package to export our overviews to excel
+# workbooks. First, we create a list containing the data frames we'd like to 
+# export. The names of the list members (in quotes) will be the sheet names in 
+# the excel file. 
 l_genus <- list("ITS1_orig" = genus1,
                 "ITS2_orig" = genus2,
                 "ITS1_extra" = genus3,
                 "ITS2_extra" = genus4)
 
+# Then we just export to the desired file by providing the list object:
 write.xlsx(l_genus, file = "output/new_overview_by_genus.xlsx")
 
+# We do the same for the tables aggregated by species.
 l_species <- list("ITS1_orig" = species1,
-                "ITS2_orig" = species2,
-                "ITS1_extra" = species3,
-                "ITS2_extra" = species4)
+                  "ITS2_orig" = species2,
+                  "ITS1_extra" = species3,
+                  "ITS2_extra" = species4)
 
 write.xlsx(l_species, file = "output/new_overview_by_species.xlsx")
