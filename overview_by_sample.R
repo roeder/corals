@@ -95,8 +95,11 @@ its1_long <- its1_long %>%
 #
 # - write a final linebreak
 
+# Declare the name of the output markdown file
+# Quick overview in RStudio: Help -> Markdown Quick Reference
 its1_out <- 'output/ITS1_by_sample.md'
 
+# Create the markdown file
 file.create(its1_out)
 
 for (i in 1:nrow(its1_sample_overview)) {
