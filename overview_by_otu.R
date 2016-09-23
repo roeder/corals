@@ -96,6 +96,7 @@ its1_long <- its1_raw %>%
   filter(diseased != '-',
          reads > 1) 
 
+### Aggregate by status ------------
 # In the next block, we
 # aggregate the number of hits for each OTU - grouped by disease status. The 
 # data frame resulting from this block will directly go into one the output
